@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ROADIE – Dashboard de Performance | Scheffer Consultoria</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Mukta:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f3f4f6; font-family: 'Mukta', sans-serif; color: #1f2937; min-height: 100vh; }
+
+    /* LAYOUT */
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 20px 60px; }
+
+    /* HEADER */
+    .header-card {
+      background: white; border-radius: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      border: 1px solid #e5e7eb; padding: 28px 36px; margin-bottom: 24px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+    }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .logo-sr { font-size: 48px; font-style: italic; font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif; color: #2c2c2c; line-height: 1; }
+    .header-divider { width: 1px; height: 44px; background: #e5e7eb; }
+    .brand-name { font-size: 26px; font-weight: 300; letter-spacing: 0.15em; color: #2c2c2c; line-height: 1; }
+    .brand-sub { font-size: 10px; letter-spacing: 0.12em; color: #9ca3af; margin-top: 4px; }
+    .header-right { text-align: right; }
+    .client-name { font-size: 18px; font-weight: 600; color: #1e3a8a; }
+    .client-period { font-size: 13px; color: #9ca3af; margin-top: 2px; }
+
+    /* SELETOR */
+    .selector-wrap { margin-bottom: 24px; }
+    .selector-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #9ca3af; margin-bottom: 10px; }
+    .selector { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sel-btn {
+      padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: 1.5px solid #e5e7eb; background: white; color: #6b7280;
+      transition: all 0.15s; font-family: 'Mukta', sans-serif; position: relative;
+    }
+    .sel-btn:hover { border-color: #1e3a8a; color: #1e3a8a; }
+    .sel-btn.active { background: #1e3a8a; border-color: #1e3a8a; color: white; }
+    .sel-btn .tag-atual {
+      position: absolute; top: -4px; right: -4px;
+      background: #22c55e; color: white; font-size: 8px; font-weight: 700;
+      padding: 1px 5px; border-radius: 10px; letter-spacing: 0.05em;
+    }
+    .sel-divider { display: flex; align-items: center; color: #d1d5db; font-size: 18px; }
+
+    /* BANNER */
+    .banner {
+      border-radius: 20px; padding: 24px 32px; margin-bottom: 24px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+    }
+    .banner-left { display: flex; align-items: center; gap: 16px; }
+    .banner-icon { background: white; border-radius: 50%; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 22px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+    .banner-title { font-size: 20px; font-weight: 700; color: white; }
+    .banner-sub { font-size: 13px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+    .banner-right { text-align: right; }
+    .banner-value { font-size: 28px; font-weight: 700; color: white; }
+    .banner-proj { font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+
+    /* BARRAS DE PROGRESSO */
+    .progress-section { background: white; border-radius: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; padding: 28px 32px; margin-bottom: 24px; }
+    .section-title { font-size: 16px; font-weight: 600; color: #1f2937; margin-bottom: 20px; }
+    .prog-row { margin-bottom: 20px; }
+    .prog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .prog-label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; }
+    .prog-values { font-size: 13px; font-weight: 600; color: #1f2937; }
+    .prog-track { height: 10px; background: #f3f4f6; border-radius: 99px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+    .prog-foot { display: flex; justify-content: space-between; margin-top: 4px; }
+    .prog-pct { font-size: 11px; font-weight: 600; }
+    .prog-meta { font-size: 11px; color: #9ca3af; }
+
+    /* KPI CARDS */
+    .kpis { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; margin-bottom: 24px; }
+    @media(min-width:640px){ .kpis { grid-template-columns: repeat(4,1fr); } }
+    .kpi-card { background: white; border-radius: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; padding: 20px; transition: box-shadow 0.2s; }
+    .kpi-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .kpi-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .kpi-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #9ca3af; }
+    .kpi-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .kpi-value { font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1; }
+    .kpi-sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+    .kpi-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; margin-top: 6px; padding: 2px 8px; border-radius: 20px; }
+    .kpi-badge.up { background: #dcfce7; color: #16a34a; }
+    .kpi-badge.down { background: #fee2e2; color: #dc2626; }
+    .kpi-badge.ok { background: #fef9c3; color: #ca8a04; }
+
+    /* GRÁFICOS */
+    .charts { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 24px; }
+    @media(min-width:640px){ .charts { grid-template-columns: 1fr 1fr; } }
+    .chart-card { background: white; border-radius: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; padding: 24px; }
+    .chart-title { font-size: 13px; font-weight: 600; color: #4b5563; margin-bottom: 16px; }
+    .chart-wrap { position: relative; height: 200px; }
+
+    /* INSIGHTS + AÇÕES */
+    .bottom { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media(min-width:640px){ .bottom { grid-template-columns: 1fr 1fr; } }
+    .panel { background: white; border-radius: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; padding: 24px; }
+    .panel-title { font-size: 13px; font-weight: 600; color: #4b5563; margin-bottom: 14px; }
+    .insight-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid; }
+    .insight-item.pos { background: #f0fdf4; border-color: #bbf7d0; }
+    .insight-item.neg { background: #fef2f2; border-color: #fecaca; }
+    .insight-item.neu { background: #fffbeb; border-color: #fde68a; }
+    .insight-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+    .insight-dot.pos { background: #22c55e; }
+    .insight-dot.neg { background: #ef4444; }
+    .insight-dot.neu { background: #f59e0b; }
+    .insight-txt { font-size: 13px; color: #374151; line-height: 1.5; }
+    .acao-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+    .acao-num { width: 24px; height: 24px; border-radius: 8px; background: #eff6ff; border: 1px solid #bfdbfe; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #1d4ed8; flex-shrink: 0; margin-top: 1px; }
+    .acao-txt { font-size: 13px; color: #374151; line-height: 1.5; }
+
+    /* ANÁLISE */
+    .analise-box { border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; border: 1px solid; }
+
+    /* SEMANAS DETALHE */
+    .sem-item { background: #f9fafb; border-radius: 10px; border: 1px solid #e5e7eb; padding: 14px 18px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .sem-label { font-size: 13px; font-weight: 600; color: #1f2937; }
+    .sem-meta { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+    .sem-val { font-size: 15px; font-weight: 700; color: #1e3a8a; }
+    .sem-status { font-size: 12px; font-weight: 600; margin-top: 2px; text-align: right; }
+    .sem-ok { color: #16a34a; } .sem-fail { color: #dc2626; } .sem-pend { color: #9ca3af; }
+
+    /* FOOTER */
+    footer { text-align: center; margin-top: 32px; font-size: 11px; color: #9ca3af; }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .fade-up { animation: fadeUp 0.3s ease both; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header-card">
+    <div class="header-left">
+      <div class="logo-sr">SR</div>
+      <div class="header-divider"></div>
+      <div>
+        <div class="brand-name">SCHEFFER</div>
+        <div class="brand-sub">CONSULTORIA DE E-COMMERCE</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="client-name">ROADIE</div>
+      <div class="client-period" id="header-period">Dashboard de Performance</div>
+    </div>
+  </div>
+
+  <!-- SELETOR -->
+  <div class="selector-wrap">
+    <div class="selector-label">Selecionar período</div>
+    <div class="selector" id="selector"></div>
+  </div>
+
+  <!-- CONTEÚDO DINÂMICO -->
+  <div id="content"></div>
+
+  <footer>Scheffer Consultoria de E-commerce · ROADIE · <span id="footer-txt"></span></footer>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// HISTÓRICO
+// Fechamentos mensais + semanas do mês atual
+// ═══════════════════════════════════════════════════════
+const HISTORICO = [
+  {
+    id: "dez25",
+    rotulo: "Dez/25",
+    tag: "Fechamento",
+    mesAno: "Dezembro 2025",
+    periodo: "Fechamento — 31/12",
+    status: "fechamento",
+    bannerCor: ["#1d4ed8","#1e40af"],
+    bannerIcone: "📊",
+    bannerTitulo: "Fechamento Dezembro: 85,10% da Meta",
+    bannerSub: "Conversão e TKM acima da meta • Aprendizados para Janeiro forte",
+    faturamento: { realizado: 60417.91, meta: 71000, projecao: null },
+    mediaDiaria: 1948.00,
+    metricas: {
+      pedidos:     { realizado: 136,    meta: 165 },
+      visitas:     { realizado: 13762,  meta: 17010 },
+      conversao:   { realizado: 0.99,   meta: 0.97 },
+      ticketMedio: { realizado: 475.25, meta: 453.55 },
+    },
+    semanais: [
+      { s:"S1 (1-7)",   real:19338.56, meta:17936.84, ok:true  },
+      { s:"S2 (8-14)",  real:21794.24, meta:19431.58, ok:true  },
+      { s:"S3 (15-21)", real:13161.06, meta:16441.30, ok:false },
+      { s:"S4 (22-28)", real:6494.46,  meta:13452.63, ok:false },
+      { s:"S5 (29-31)", real:3845.01,  meta:7474.74,  ok:false },
+    ],
+    analise: { cor:"blue", txt: "Faturamento final de R$ 60.417,91 (85,10% da meta). Conversão 0,99% e TKM R$ 475,25 — ambos acima da meta. Gargalo foi volume de tráfego. Semanas 4-5 com TKM de R$ 541–549 revelam compras intencionais de alto valor." },
+    insights: [
+      { tipo:"pos", texto:"Conversão 0,99% (102%) e TKM R$ 475,25 (104,78%) acima da meta" },
+      { tipo:"pos", texto:"TKM das Semanas 4-5 (R$ 541–549): compras intencionais de alto valor" },
+      { tipo:"neg", texto:"85,10% da meta — queda de volume após Semana 2" },
+      { tipo:"neu", texto:"Gargalo foi volume de tráfego, não eficiência de conversão" },
+    ],
+    acoes: [
+      "Análise pós-dezembro: identificar públicos e campanhas vencedoras",
+      "Planejar Janeiro como mês do Verão Roadie com entrada forte em tráfego",
+      "Reativar base aquecida via e-mail + remarketing",
+    ],
+    acaoPrioritaria: "Análise pós-dezembro para identificar aprendizados e estruturar Janeiro como mês do Verão Roadie.",
+    acaoCor: "blue",
+  },
+  {
+    id: "jan26",
+    rotulo: "Jan/26",
+    tag: "Fechamento",
+    mesAno: "Janeiro 2026",
+    periodo: "Fechamento — 25/01",
+    status: "fechamento",
+    bannerCor: ["#b45309","#92400e"],
+    bannerIcone: "⚠️",
+    bannerTitulo: "54,19% da Meta • Conversão em Queda",
+    bannerSub: "Projeção caiu para 67,20% • TKM forte (R$ 455) sustenta resultado",
+    faturamento: { realizado: 32514.40, meta: 60000, projecao: 40317.86 },
+    mediaDiaria: 1300.58,
+    metricas: {
+      pedidos:     { realizado: 77,    meta: 142 },
+      visitas:     { realizado: 8674,  meta: 12909 },
+      conversao:   { realizado: 0.89,  meta: 1.10 },
+      ticketMedio: { realizado: 455.04,meta: 450 },
+    },
+    semanais: [
+      { s:"S1 (1-4)",   real:5121.51,  meta:8229.07,  ok:false },
+      { s:"S2 (5-11)",  real:12562.07, meta:14433.58, ok:false },
+      { s:"S3 (12-18)", real:8754.17,  meta:14433.58, ok:false },
+      { s:"S4 (19-25)", real:8600.09,  meta:14433.58, ok:false },
+    ],
+    analise: { cor:"amber", txt: "Faturamento de R$ 32.514,40 (54,19% da meta). Conversão despencou de 1,43% (S2) para 0,61% (S4). TKM de R$ 455,04 foi o principal sustentador. Visitas cresceram mas conversão não acompanhou — problema na jornada de compra." },
+    insights: [
+      { tipo:"pos", texto:"TKM R$ 455,04 (101%) — principal sustentação do faturamento" },
+      { tipo:"neg", texto:"Conversão despencou: 1,43% → 0,61% entre Semanas 2 e 4" },
+      { tipo:"neu", texto:"Visitas cresceram continuamente mas conversão não acompanhou" },
+      { tipo:"neg", texto:"Projeção caiu para 67,20% da meta" },
+    ],
+    acoes: [
+      "Criativos de performance Verão para atrair público mais qualificado",
+      "Otimizar jornada: PDPs + carrinho + checkout",
+      "Remarketing da base de 8.674 visitantes acumulados",
+    ],
+    acaoPrioritaria: "Otimizar jornada de compra + intensificar tráfego pago. TKM forte (R$ 455) já funciona — foco em recuperar conversão (0,89% vs meta 1,10%).",
+    acaoCor: "amber",
+  },
+  {
+    id: "fev-s1",
+    rotulo: "Fev S1",
+    tag: "Semana 1",
+    mesAno: "Fevereiro 2026",
+    periodo: "01–08/02",
+    status: "encerrado",
+    bannerCor: ["#15803d","#166534"],
+    bannerIcone: "🚀",
+    bannerTitulo: "Início Forte: 30,97% da Meta em 8 Dias!",
+    bannerSub: "Projeção: 108,39% da meta • E-mail marketing +300% em receita",
+    faturamento: { realizado: 18581.39, meta: 60000, projecao: 65034.87 },
+    mediaDiaria: 2322.67,
+    metricas: {
+      pedidos:     { realizado: 41,    meta: 129 },
+      visitas:     { realizado: 3865,  meta: 12903 },
+      conversao:   { realizado: 1.06,  meta: 1.00 },
+      ticketMedio: { realizado: 480.70,meta: 500 },
+    },
+    semanais: [
+      { s:"S1 (1-8)", real:19708.67, meta:18432.57, ok:true },
+    ],
+    analise: { cor:"green", txt: "Faturamento de R$ 18.581,39 (30,97% da meta) em 8 dias com média de R$ 2.322,67/dia. Projeção indica R$ 65.034,87 (108,39%). E-mail marketing +300% em receita, ROI R$ 14,27/sessão na /sale. Página /sale saltou de 1 para 11 vendas." },
+    insights: [
+      { tipo:"pos", texto:"Semana 1 superou meta semanal em +6,92%" },
+      { tipo:"pos", texto:"E-mail marketing +300% em receita | ROI R$ 14,27/sessão na /sale" },
+      { tipo:"pos", texto:"Página /sale saltou de 1 para 11 vendas" },
+      { tipo:"pos", texto:"Receita +15%, transações +52% após ajustes de campanha" },
+    ],
+    acoes: [
+      "Escalar e-mail marketing para /sale (+50% volume, testes A/B)",
+      "Redirecionar 20% do budget Paid Search para home page",
+      "Pausar campanhas ineficientes: economia de R$ 1.750/mês",
+    ],
+    acaoPrioritaria: "Escalar e-mail marketing para /sale (+50%) aproveitando ROI de R$ 14,27/sessão + redirecionar 20% do budget para home page.",
+    acaoCor: "green",
+  },
+  {
+    id: "fev-s2",
+    rotulo: "Fev S2",
+    tag: "Atual",
+    mesAno: "Fevereiro 2026",
+    periodo: "01–15/02",
+    status: "atual",
+    bannerCor: ["#15803d","#059669"],
+    bannerIcone: "🏆",
+    bannerTitulo: "2 Semanas Consecutivas Acima da Meta!",
+    bannerSub: "Projeção: 123,96% da meta • TKM R$ 521,74 • Conversão 1,17%",
+    faturamento: { realizado: 39842.96, meta: 60000, projecao: 74373.53 },
+    mediaDiaria: 2656.20,
+    metricas: {
+      pedidos:     { realizado: 81,    meta: 129 },
+      visitas:     { realizado: 6924,  meta: 12903 },
+      conversao:   { realizado: 1.17,  meta: 1.00 },
+      ticketMedio: { realizado: 521.74,meta: 500 },
+    },
+    semanais: [
+      { s:"S1 (1-8)",   real:19708.67, meta:18432.57, ok:true },
+      { s:"S2 (9-15)",  real:22552.52, meta:16129.03, ok:true },
+      { s:"S3 (16-22)", real:0, meta:16129.03, ok:null },
+      { s:"S4 (23-28)", real:0, meta:13825.50, ok:null },
+    ],
+    analise: { cor:"green", txt: "Faturamento de R$ 39.842,96 (66,40% da meta) em 15 dias com média de R$ 2.656,20/dia. Projeção subiu para R$ 74.373,53 (123,96%). TKM cresceu: S1 R$ 480,70 → S2 R$ 563,81. Conversão crescendo: 1,06% → 1,31%." },
+    insights: [
+      { tipo:"pos", texto:"2 semanas consecutivas acima da meta semanal ✓" },
+      { tipo:"pos", texto:"TKM subiu para R$ 521,74 — Semana 2 chegou a R$ 563,81" },
+      { tipo:"pos", texto:"Conversão crescendo: 1,06% → 1,31%" },
+      { tipo:"pos", texto:"Projeção: R$ 74.373,53 (123,96% da meta)" },
+    ],
+    acoes: [
+      "Manter campanhas que estão performando",
+      "Renovar criativos com desgaste de frequência",
+      "Sustentar e-mail marketing 2x/semana",
+    ],
+    acaoPrioritaria: "Manter o ritmo. Renovar criativos para evitar desgaste de frequência. Meta de R$ 74.373,53 (123,96%) ao alcance.",
+    acaoCor: "green",
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+// UTILITÁRIOS
+// ═══════════════════════════════════════════════════════
+const fmt = v => "R$ " + Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = (r,m) => ((r/m)*100).toFixed(1);
+
+const corBarra = (r,m) => {
+  const p = r/m;
+  if(p >= 1) return "#16a34a";
+  if(p >= 0.8) return "#f59e0b";
+  return "#ef4444";
+};
+const corLabel = (r,m) => {
+  const p = r/m;
+  if(p >= 1) return "#16a34a";
+  if(p >= 0.8) return "#d97706";
+  return "#dc2626";
+};
+
+let chartA = null, chartB = null;
+let idxAtual = HISTORICO.length - 1;
+
+// ═══════════════════════════════════════════════════════
+// RENDER SELETOR
+// ═══════════════════════════════════════════════════════
+function renderSeletor(){
+  const el = document.getElementById("selector");
+  // Agrupar por mês
+  let html = "";
+  let mesAnterior = "";
+  HISTORICO.forEach((h,i) => {
+    if(h.mesAno !== mesAnterior && mesAnterior !== ""){
+      html += `<div class="sel-divider">·</div>`;
+    }
+    mesAnterior = h.mesAno;
+    const isAtual = h.status === "atual";
+    const tagTxt = isAtual ? "Atual" : h.tag;
+    html += `<button class="sel-btn ${i===idxAtual?"active":""}" onclick="irPara(${i})">
+      ${h.rotulo}
+      ${tagTxt ? `<span class="tag-atual">${tagTxt}</span>` : ""}
+    </button>`;
+  });
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER CONTEÚDO
+// ═══════════════════════════════════════════════════════
+function renderConteudo(){
+  const p = HISTORICO[idxAtual];
+  const percMeta = pct(p.faturamento.realizado, p.faturamento.meta);
+  const acima = p.faturamento.realizado >= p.faturamento.meta;
+  const projPct = p.faturamento.projecao ? pct(p.faturamento.projecao, p.faturamento.meta) : null;
+
+  document.getElementById("header-period").textContent = `${p.mesAno} — ${p.periodo}`;
+  document.getElementById("footer-txt").textContent = `${p.mesAno} · ${p.periodo}`;
+
+  // BARRAS KPI
+  const progRow = (label, real, meta, fmtFn, unit="") => {
+    const c = corBarra(real,meta);
+    const cl = corLabel(real,meta);
+    const w = Math.min((real/meta)*100,100);
+    const pe = pct(real,meta);
+    return `
+    <div class="prog-row">
+      <div class="prog-header">
+        <span class="prog-label">${label}</span>
+        <span class="prog-values">${fmtFn(real)}${unit} <span style="color:#9ca3af;font-weight:400">/ ${fmtFn(meta)}${unit}</span></span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" style="width:${w}%;background:${c}"></div></div>
+      <div class="prog-foot">
+        <span class="prog-pct" style="color:${cl}">${pe}% da meta${parseFloat(pe)>=100?" ✓":""}</span>
+        <span class="prog-meta">Média diária: ${fmt(p.mediaDiaria)}</span>
+      </div>
+    </div>`;
+  };
+
+  // SEMANAS
+  const semanasHtml = p.semanais.map(s => {
+    const isPendente = s.ok === null;
+    const statusCls = isPendente ? "sem-pend" : s.ok ? "sem-ok" : "sem-fail";
+    const statusTxt = isPendente ? "Pendente" : s.ok ? "✓ Acima da meta" : "✗ Abaixo da meta";
+    return `
+    <div class="sem-item">
+      <div>
+        <div class="sem-label">${s.s}</div>
+        <div class="sem-meta">Meta: ${fmt(s.meta)}</div>
+      </div>
+      <div>
+        <div class="sem-val">${isPendente ? "—" : fmt(s.real)}</div>
+        <div class="sem-status ${statusCls}">${statusTxt}</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  // ANÁLISE BOX
+  const analiseColors = {
+    green: { bg:"#f0fdf4", border:"#bbf7d0", txt:"#15803d" },
+    blue:  { bg:"#eff6ff", border:"#bfdbfe", txt:"#1d4ed8" },
+    amber: { bg:"#fffbeb", border:"#fde68a", txt:"#b45309" },
+    red:   { bg:"#fef2f2", border:"#fecaca", txt:"#dc2626" },
+  };
+  const ac = analiseColors[p.analise.cor] || analiseColors.blue;
+  const acaoCores = {
+    green: { bg:"#f0fdf4", border:"#bbf7d0", txt:"#15803d" },
+    blue:  { bg:"#eff6ff", border:"#bfdbfe", txt:"#1d4ed8" },
+    amber: { bg:"#fffbeb", border:"#fde68a", txt:"#b45309" },
+  };
+  const acc = acaoCores[p.acaoCor] || acaoCores.blue;
+
+  document.getElementById("content").innerHTML = `
+    <!-- BANNER -->
+    <div class="banner" style="background:linear-gradient(135deg,${p.bannerCor[0]},${p.bannerCor[1]})">
+      <div class="banner-left">
+        <div class="banner-icon">${p.bannerIcone}</div>
+        <div>
+          <div class="banner-title">${p.bannerTitulo}</div>
+          <div class="banner-sub">${p.bannerSub}</div>
+        </div>
+      </div>
+      <div class="banner-right">
+        <div class="banner-value">${fmt(p.faturamento.realizado)}</div>
+        <div class="banner-proj">${projPct ? `Projeção: ${fmt(p.faturamento.projecao)} (${projPct}%)` : `${percMeta}% da meta`}</div>
+      </div>
+    </div>
+
+    <!-- PROGRESSO -->
+    <div class="progress-section">
+      <div class="section-title">Meta de Indicadores</div>
+      ${progRow("Vendas", p.faturamento.realizado, p.faturamento.meta, fmt)}
+      ${progRow("Visitas", p.metricas.visitas.realizado, p.metricas.visitas.meta, v=>v.toLocaleString("pt-BR"))}
+      ${progRow("Pedidos", p.metricas.pedidos.realizado, p.metricas.pedidos.meta, v=>String(v))}
+      ${progRow("Conversão", p.metricas.conversao.realizado, p.metricas.conversao.meta, v=>Number(v).toFixed(2), "%")}
+      ${progRow("Ticket Médio", p.metricas.ticketMedio.realizado, p.metricas.ticketMedio.meta, fmt)}
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpis">
+      ${kpiCard("👁️ Visitas", p.metricas.visitas.realizado.toLocaleString("pt-BR"), `Meta: ${p.metricas.visitas.meta.toLocaleString("pt-BR")}`, p.metricas.visitas.realizado, p.metricas.visitas.meta, "#f59e0b")}
+      ${kpiCard("🛒 Pedidos", p.metricas.pedidos.realizado, `Meta: ${p.metricas.pedidos.meta}`, p.metricas.pedidos.realizado, p.metricas.pedidos.meta, "#1e3a8a")}
+      ${kpiCard("📈 Conversão", Number(p.metricas.conversao.realizado).toFixed(2)+"%", `Meta: ${p.metricas.conversao.meta}%`, p.metricas.conversao.realizado, p.metricas.conversao.meta, "#16a34a")}
+      ${kpiCard("💰 Ticket Médio", fmt(p.metricas.ticketMedio.realizado), `Meta: ${fmt(p.metricas.ticketMedio.meta)}`, p.metricas.ticketMedio.realizado, p.metricas.ticketMedio.meta, "#7c3aed")}
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="charts">
+      <div class="chart-card">
+        <div class="chart-title">Vendas vs Meta por Semana</div>
+        <div class="chart-wrap"><canvas id="cA"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Desempenho por Semana</div>
+        <div style="padding-top:4px">${semanasHtml}</div>
+      </div>
+    </div>
+
+    <!-- ANÁLISE -->
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-title">💡 Análise do Período</div>
+      <div class="analise-box" style="background:${ac.bg};border-color:${ac.border}">
+        <p style="font-size:13px;color:${ac.txt};line-height:1.6">${p.analise.txt}</p>
+      </div>
+      <div class="panel-title" style="margin-top:16px">Insights</div>
+      ${p.insights.map(ins=>`
+        <div class="insight-item ${ins.tipo}">
+          <div class="insight-dot ${ins.tipo}"></div>
+          <p class="insight-txt">${ins.texto}</p>
+        </div>`).join("")}
+    </div>
+
+    <!-- AÇÕES -->
+    <div class="panel">
+      <div class="panel-title">🚀 Plano de Ação</div>
+      ${p.acoes.map((a,i)=>`
+        <div class="acao-item">
+          <div class="acao-num">${i+1}</div>
+          <p class="acao-txt">${a}</p>
+        </div>`).join("")}
+      <div class="analise-box" style="background:${acc.bg};border-color:${acc.border};margin-top:12px">
+        <p style="font-size:13px;color:${acc.txt};line-height:1.6"><strong>🎯 Ação Prioritária:</strong> ${p.acaoPrioritaria}</p>
+      </div>
+    </div>
+  `;
+
+  renderGrafico(p);
+
+  const c = document.getElementById("content");
+  c.classList.remove("fade-up"); void c.offsetWidth; c.classList.add("fade-up");
+}
+
+function kpiCard(label, value, sub, real, meta, cor){
+  const p = real/meta;
+  const badgeCls = p >= 1 ? "up" : p >= 0.8 ? "ok" : "down";
+  const badgeTxt = p >= 1 ? `▲ ${pct(real,meta)}%` : `${pct(real,meta)}%`;
+  return `
+  <div class="kpi-card">
+    <div class="kpi-top">
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-icon" style="background:${cor}15">&nbsp;</div>
+    </div>
+    <div class="kpi-value">${value}</div>
+    <div class="kpi-sub">${sub}</div>
+    <span class="kpi-badge ${badgeCls}">${badgeTxt} da meta</span>
+  </div>`;
+}
+
+function renderGrafico(p){
+  if(chartA){ chartA.destroy(); chartA=null; }
+  const semFiltradas = p.semanais.filter(s=>s.real>0||s.ok!==null);
+  const labels = semFiltradas.map(s=>s.s);
+  const reais  = semFiltradas.map(s=>s.real);
+  const metas  = semFiltradas.map(s=>s.meta);
+
+  const cA = document.getElementById("cA");
+  if(!cA) return;
+
+  const tick = { color:"#9ca3af", font:{size:11,family:"Mukta"} };
+  const grid = { color:"rgba(0,0,0,0.05)" };
+
+  chartA = new Chart(cA, {
+    type:"bar",
+    data:{
+      labels,
+      datasets:[
+        { label:"Meta",      data:metas, backgroundColor:"#e5e7eb", borderRadius:5 },
+        { label:"Realizado", data:reais, backgroundColor:"#1e3a8a", borderRadius:5 },
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:"#6b7280", font:{size:11,family:"Mukta"}, boxWidth:10 } } },
+      scales:{
+        x:{ grid:{display:false}, ticks:tick },
+        y:{ grid, ticks:{ ...tick, callback:v=>"R$"+(v/1000).toFixed(0)+"k" } }
+      }
+    }
+  });
+}
+
+function irPara(i){
+  if(i<0||i>=HISTORICO.length) return;
+  idxAtual=i;
+  renderSeletor();
+  renderConteudo();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+renderSeletor();
+renderConteudo();
+</script>
+</body>
+</html>
