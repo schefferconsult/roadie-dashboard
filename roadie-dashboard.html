@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roadie – Dashboard de Performance</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080b12;
+      --surface: rgba(255,255,255,0.05);
+      --border: rgba(255,255,255,0.08);
+      --text: #ffffff;
+      --muted: rgba(255,255,255,0.35);
+      --dim: rgba(255,255,255,0.15);
+      --green: #22c55e;
+      --green-light: #4ade80;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --purple: #a78bfa;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    .serif { font-family: 'DM Serif Display', serif; }
+
+    /* HEADER */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 18px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: rgba(8,11,18,0.92);
+      backdrop-filter: blur(12px);
+      z-index: 10;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .logo { font-size: 28px; font-style: italic; font-family: 'DM Serif Display', serif; opacity: 0.9; }
+    .divider { width: 1px; height: 20px; background: var(--border); }
+    .header-meta p:first-child { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+    .header-meta p:last-child { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8); }
+    .live-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+    .dot-live { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* LAYOUT */
+    main { max-width: 1000px; margin: 0 auto; padding: 36px 24px 60px; }
+
+    /* SELETOR */
+    .selector-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.25); margin-bottom: 10px; }
+    .selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 32px; }
+    .sel-btn {
+      padding: 6px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.03);
+      color: rgba(255,255,255,0.35);
+      transition: all 0.15s;
+      position: relative;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .sel-btn:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.6); }
+    .sel-btn.active { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); color: white; }
+    .sel-btn .badge-atual {
+      position: absolute; top: -3px; right: -3px;
+      width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    }
+
+    /* PERÍODO HEADER */
+    .period-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+    .period-meta { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .period-title { font-size: clamp(24px,4vw,38px); font-family: 'DM Serif Display', serif; font-weight: 300; display: flex; align-items: center; gap: 12px; }
+    .badge-atual-inline {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      background: rgba(34,197,94,0.12);
+      color: #4ade80;
+      border: 1px solid rgba(34,197,94,0.25);
+      border-radius: 20px;
+      padding: 2px 10px;
+    }
+    .nav-btns { display: flex; gap: 8px; margin-top: 4px; }
+    .nav-btn {
+      width: 36px; height: 36px; border-radius: 12px;
+      border: 1px solid var(--border); background: transparent;
+      color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; transition: background 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) { background: rgba(255,255,255,0.06); }
+    .nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+    /* CARD FATURAMENTO */
+    .fat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+    .fat-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .fat-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+    .fat-value { font-size: clamp(28px,5vw,46px); font-weight: 700; letter-spacing: -1px; }
+    .fat-badges { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+    .pct-badge {
+      font-size: 13px; font-weight: 600;
+      padding: 4px 12px; border-radius: 20px;
+    }
+    .pct-badge.acima { background: rgba(34,197,94,0.12); color: #4ade80; }
+    .pct-badge.abaixo { background: rgba(239,68,68,0.12); color: #f87171; }
+    .fat-meta-txt { font-size: 13px; color: var(--muted); }
+    .proj-block { text-align: right; }
+    .proj-value { font-size: 22px; font-weight: 700; }
+    .proj-pct { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .progress-bar-wrap { margin-top: 20px; background: rgba(255,255,255,0.05); border-radius: 99px; height: 7px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 99px; transition: width 0.7s ease; }
+
+    /* KPIs */
+    .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+    @media(min-width:600px){ .kpis { grid-template-columns: repeat(4,1fr); } }
+    .kpi-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 18px;
+    }
+    .kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .kpi-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.28); }
+    .kpi-icon { font-size: 13px; }
+    .kpi-value { font-size: 20px; font-weight: 700; line-height: 1; }
+    .kpi-pct { font-size: 11px; margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+    .kpi-bar { height: 4px; border-radius: 99px; background: rgba(255,255,255,0.07); margin-top: 8px; overflow: hidden; }
+    .kpi-bar-fill { height: 100%; border-radius: 99px; transition: width 0.7s ease; }
+    .kpi-meta { font-size: 10px; color: rgba(255,255,255,0.18); margin-top: 6px; }
+
+    /* GRÁFICOS */
+    .charts { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 20px; }
+    @media(min-width:600px){ .charts { grid-template-columns: 1fr 1fr; } }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 20px; }
+    .chart-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+    .chart-wrap { position: relative; height: 170px; }
+
+    /* INSIGHTS + AÇÕES */
+    .bottom-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media(min-width:600px){ .bottom-grid { grid-template-columns: 1fr 1fr; } }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 20px; }
+    .panel-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+    .insight-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      border-radius: 12px; padding: 10px 12px; margin-bottom: 8px;
+      border: 1px solid;
+    }
+    .insight-item.pos { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.18); }
+    .insight-item.neg { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.18); }
+    .insight-item.neu { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.18); }
+    .insight-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+    .insight-dot.pos { background: var(--green); }
+    .insight-dot.neg { background: var(--red); }
+    .insight-dot.neu { background: var(--amber); }
+    .insight-txt { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.5; }
+    .acao-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+    .acao-num {
+      width: 20px; height: 20px; border-radius: 8px; flex-shrink: 0;
+      background: rgba(59,130,246,0.18); border: 1px solid rgba(59,130,246,0.28);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: #93c5fd; margin-top: 1px;
+    }
+    .acao-txt { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.5; }
+
+    /* FOOTER */
+    footer { border-top: 1px solid var(--border); padding: 18px 40px; text-align: center; font-size: 11px; color: rgba(255,255,255,0.12); }
+
+    /* FADE */
+    @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    .fade-up { animation: fadeUp 0.3s ease both; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="logo">SR</span>
+    <div class="divider"></div>
+    <div class="header-meta">
+      <p>Scheffer Consultoria</p>
+      <p>ROADIE — Dashboard de Performance</p>
+    </div>
+  </div>
+  <div class="live-badge">
+    <div class="dot-live"></div>
+    <span>Atualizado semanalmente</span>
+  </div>
+</header>
+
+<main>
+  <p class="selector-label">Histórico de períodos</p>
+  <div class="selector" id="selector"></div>
+  <div id="content" class="fade-up"></div>
+</main>
+
+<footer id="footer"></footer>
+
+<script>
+// ─────────────────────────────────────────────
+// HISTÓRICO COMPLETO
+// Para adicionar nova semana: copie o último objeto e atualize os dados
+// ─────────────────────────────────────────────
+const HISTORICO = [
+  {
+    id: "dez-final", rotulo: "Dez/25 Final", mesAno: "Dezembro 2025", periodo: "Fechamento 31/12", status: "encerrado",
+    faturamento: { realizado: 60417.91, meta: 71000, projecao: null },
+    metricas: {
+      pedidos:     { realizado: 136,    meta: 165 },
+      visitas:     { realizado: 13762,  meta: 17010 },
+      conversao:   { realizado: 0.99,   meta: 0.97 },
+      ticketMedio: { realizado: 475.25, meta: 453.55 },
+    },
+    semanais: [
+      { s:"S1", real:19338.56, meta:17936.84, conv:0.91 },
+      { s:"S2", real:21794.24, meta:19431.58, conv:1.23 },
+      { s:"S3", real:13161.06, meta:16441.30, conv:0.91 },
+      { s:"S4", real:6494.46,  meta:13452.63, conv:0.67 },
+      { s:"S5", real:3845.01,  meta:7474.74,  conv:1.25 },
+    ],
+    insights: [
+      { tipo:"pos", texto:"Conversão 0,99% e TKM R$ 475,25 — ambos acima da meta" },
+      { tipo:"pos", texto:"TKM das Semanas 4-5 (R$ 541–549): compras intencionais de alto valor" },
+      { tipo:"neg", texto:"85,10% da meta — queda de volume após Semana 2" },
+      { tipo:"neu", texto:"Gargalo foi volume de tráfego, não eficiência de conversão" },
+    ],
+    acoes: [
+      "Análise pós-dezembro: identificar públicos e campanhas vencedoras",
+      "Planejar Janeiro como mês do Verão Roadie com entrada forte em tráfego",
+      "Reativar base aquecida via e-mail + remarketing",
+    ],
+  },
+  {
+    id: "jan-s2", rotulo: "Jan/26 S2", mesAno: "Janeiro 2026", periodo: "01–11/01", status: "encerrado",
+    faturamento: { realizado: 16700.84, meta: 60000, projecao: 47065.00 },
+    metricas: {
+      pedidos:     { realizado: 39,    meta: 142 },
+      visitas:     { realizado: 2774,  meta: 12909 },
+      conversao:   { realizado: 1.41,  meta: 1.10 },
+      ticketMedio: { realizado: 453.43,meta: 450 },
+    },
+    semanais: [
+      { s:"S1", real:5121.51,  meta:8229.07,  conv:1.42 },
+      { s:"S2", real:11579.33, meta:14433.58, conv:1.40 },
+    ],
+    insights: [
+      { tipo:"pos", texto:"Conversão 1,41% — 28% acima da meta" },
+      { tipo:"pos", texto:"TKM R$ 453,43 acima da meta de R$ 450" },
+      { tipo:"neg", texto:"Visitas: apenas 21,49% da meta — tráfego é o gargalo" },
+      { tipo:"neu", texto:"Projeção de 78,44% se ritmo se mantiver" },
+    ],
+    acoes: [
+      "Aumentar investimento em tráfego pago (meta: 1.200+ visitas/dia)",
+      "Manter frequência de criativos Verão",
+      "Remarketing da base acumulada",
+    ],
+  },
+  {
+    id: "jan-s3", rotulo: "Jan/26 S3", mesAno: "Janeiro 2026", periodo: "01–18/01", status: "encerrado",
+    faturamento: { realizado: 25455.01, meta: 60000, projecao: 43839.18 },
+    metricas: {
+      pedidos:     { realizado: 62,    meta: 142 },
+      visitas:     { realizado: 5574,  meta: 12909 },
+      conversao:   { realizado: 1.11,  meta: 1.10 },
+      ticketMedio: { realizado: 426.42,meta: 450 },
+    },
+    semanais: [
+      { s:"S1", real:5121.51,  meta:8229.07,  conv:1.42 },
+      { s:"S2", real:12562.07, meta:14433.58, conv:1.43 },
+      { s:"S3", real:8754.17,  meta:14433.58, conv:0.78 },
+    ],
+    insights: [
+      { tipo:"neg", texto:"Conversão carrinho→checkout caiu: 62,5% → 39,8%" },
+      { tipo:"neg", texto:"TKM recuou de R$ 466 para R$ 426 (-8,6%)" },
+      { tipo:"pos", texto:"Tráfego cresceu +48,7% na Semana 3" },
+      { tipo:"neu", texto:"Projeção ajustada para 73,07% da meta" },
+    ],
+    acoes: [
+      "Otimizar checkout: convidado + frete visível + menos campos",
+      "LPs dedicadas para bermudas e camisas (destaque em visitas)",
+      "E-mail marketing 2x/semana + fluxo de carrinho abandonado",
+    ],
+  },
+  {
+    id: "jan-s4", rotulo: "Jan/26 S4", mesAno: "Janeiro 2026", periodo: "01–25/01", status: "encerrado",
+    faturamento: { realizado: 32514.40, meta: 60000, projecao: 40317.86 },
+    metricas: {
+      pedidos:     { realizado: 77,    meta: 142 },
+      visitas:     { realizado: 8674,  meta: 12909 },
+      conversao:   { realizado: 0.89,  meta: 1.10 },
+      ticketMedio: { realizado: 455.04,meta: 450 },
+    },
+    semanais: [
+      { s:"S1", real:5121.51,  meta:8229.07,  conv:1.42 },
+      { s:"S2", real:12562.07, meta:14433.58, conv:1.43 },
+      { s:"S3", real:8754.17,  meta:14433.58, conv:0.78 },
+      { s:"S4", real:8600.09,  meta:14433.58, conv:0.61 },
+    ],
+    insights: [
+      { tipo:"pos", texto:"TKM R$ 455,04 (101%) — principal sustentação do faturamento" },
+      { tipo:"neg", texto:"Conversão despencou: 1,43% → 0,61% entre Semanas 2 e 4" },
+      { tipo:"neu", texto:"Visitas cresceram continuamente mas conversão não acompanhou" },
+      { tipo:"neg", texto:"Projeção caiu para 67,20% da meta" },
+    ],
+    acoes: [
+      "Criativos de performance Verão para os últimos dias",
+      "Otimizar jornada: PDPs + carrinho + checkout urgente",
+      "Remarketing da base de 8.674 visitantes do mês",
+    ],
+  },
+  {
+    id: "fev-s1", rotulo: "Fev/26 S1", mesAno: "Fevereiro 2026", periodo: "01–08/02", status: "encerrado",
+    faturamento: { realizado: 18581.39, meta: 60000, projecao: 65034.87 },
+    metricas: {
+      pedidos:     { realizado: 41,    meta: 129 },
+      visitas:     { realizado: 3865,  meta: 12903 },
+      conversao:   { realizado: 1.06,  meta: 1.00 },
+      ticketMedio: { realizado: 480.70,meta: 500 },
+    },
+    semanais: [
+      { s:"S1", real:19708.67, meta:18432.57, conv:1.06 },
+    ],
+    insights: [
+      { tipo:"pos", texto:"Semana 1 superou meta semanal em +6,92%" },
+      { tipo:"pos", texto:"E-mail marketing +300% em receita | ROI R$ 14,27/sessão na /sale" },
+      { tipo:"pos", texto:"Página /sale saltou de 1 para 11 vendas" },
+      { tipo:"pos", texto:"Receita +15%, transações +52% após ajustes de campanha" },
+    ],
+    acoes: [
+      "Escalar e-mail marketing para /sale (+50% volume, testes A/B)",
+      "Redirecionar 20% do budget Paid Search para home page",
+      "Pausar campanhas ineficientes: economia de R$ 1.750/mês",
+    ],
+  },
+  {
+    id: "fev-s2", rotulo: "Fev/26 S2", mesAno: "Fevereiro 2026", periodo: "01–15/02", status: "atual",
+    faturamento: { realizado: 39842.96, meta: 60000, projecao: 74373.53 },
+    metricas: {
+      pedidos:     { realizado: 81,    meta: 129 },
+      visitas:     { realizado: 6924,  meta: 12903 },
+      conversao:   { realizado: 1.17,  meta: 1.00 },
+      ticketMedio: { realizado: 521.74,meta: 500 },
+    },
+    semanais: [
+      { s:"S1", real:19708.67, meta:18432.57, conv:1.06 },
+      { s:"S2", real:22552.52, meta:16129.03, conv:1.31 },
+    ],
+    insights: [
+      { tipo:"pos", texto:"2 semanas consecutivas acima da meta semanal ✓" },
+      { tipo:"pos", texto:"TKM subiu para R$ 521,74 — Semana 2 chegou a R$ 563,81" },
+      { tipo:"pos", texto:"Conversão crescendo: 1,06% → 1,31%" },
+      { tipo:"pos", texto:"Projeção: R$ 74.373,53 (123,96% da meta)" },
+    ],
+    acoes: [
+      "Manter campanhas que estão performando",
+      "Renovar criativos com desgaste de frequência",
+      "Sustentar e-mail marketing 2x/semana",
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────
+// UTILITÁRIOS
+// ─────────────────────────────────────────────
+const fmt = v => "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:2, maximumFractionDigits:2 });
+const pct = (r, m) => ((r / m) * 100).toFixed(1);
+const cor = (r, m) => r >= m ? "#22c55e" : r/m >= 0.8 ? "#f59e0b" : "#ef4444";
+
+let chartVendas = null;
+let chartConv   = null;
+let idxAtual    = HISTORICO.length - 1;
+
+// ─────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────
+function renderSeletor() {
+  const el = document.getElementById("selector");
+  el.innerHTML = HISTORICO.map((h, i) => `
+    <button class="sel-btn ${i === idxAtual ? "active" : ""}" onclick="irPara(${i})">
+      ${h.rotulo}
+      ${h.status === "atual" ? '<span class="badge-atual"></span>' : ""}
+    </button>
+  `).join("");
+}
+
+function renderConteudo() {
+  const p = HISTORICO[idxAtual];
+  const percMeta = pct(p.faturamento.realizado, p.faturamento.meta);
+  const acima    = p.faturamento.realizado >= p.faturamento.meta;
+  const projPct  = p.faturamento.projecao ? pct(p.faturamento.projecao, p.faturamento.meta) : null;
+  const projCor  = p.faturamento.projecao && p.faturamento.projecao >= p.faturamento.meta ? "#4ade80" : "#f59e0b";
+
+  // KPI helpers
+  const kpi = (label, val, meta, fmtFn, unit="") => {
+    const c = cor(val, meta);
+    const perc = pct(val, meta);
+    const w = Math.min((val/meta)*100, 100);
+    const icon = val >= meta ? "✓" : "!";
+    return `
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">${label}</span>
+          <span class="kpi-icon" style="color:${c}">${icon}</span>
+        </div>
+        <div class="kpi-value">${fmtFn(val)}${unit}</div>
+        <div class="kpi-pct" style="color:${c}">${perc}% da meta</div>
+        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${w}%;background:${c}"></div></div>
+        <div class="kpi-meta">Meta: ${fmtFn(meta)}${unit}</div>
+      </div>`;
+  };
+
+  document.getElementById("content").innerHTML = `
+    <div class="period-header">
+      <div>
+        <p class="period-meta">${p.mesAno}</p>
+        <h1 class="period-title">
+          ${p.periodo}
+          ${p.status === "atual" ? '<span class="badge-atual-inline">Atual</span>' : ""}
+        </h1>
+      </div>
+      <div class="nav-btns">
+        <button class="nav-btn" onclick="irPara(${idxAtual-1})" ${idxAtual===0?"disabled":""}>&#8249;</button>
+        <button class="nav-btn" onclick="irPara(${idxAtual+1})" ${idxAtual===HISTORICO.length-1?"disabled":""}>&#8250;</button>
+      </div>
+    </div>
+
+    <div class="fat-card">
+      <div class="fat-row">
+        <div>
+          <p class="fat-label">Faturamento acumulado</p>
+          <p class="fat-value">${fmt(p.faturamento.realizado)}</p>
+          <div class="fat-badges">
+            <span class="pct-badge ${acima?"acima":"abaixo"}">${acima?"▲":"▼"} ${percMeta}% da meta</span>
+            <span class="fat-meta-txt">Meta: ${fmt(p.faturamento.meta)}</span>
+          </div>
+        </div>
+        ${projPct ? `
+        <div class="proj-block">
+          <p class="fat-label">Projeção mensal</p>
+          <p class="proj-value" style="color:${projCor}">${fmt(p.faturamento.projecao)}</p>
+          <p class="proj-pct">${projPct}% da meta</p>
+        </div>` : ""}
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" style="width:${Math.min(parseFloat(percMeta),100)}%;background:${acima?"linear-gradient(90deg,#22c55e,#4ade80)":"linear-gradient(90deg,#f59e0b,#fbbf24)"}"></div>
+      </div>
+    </div>
+
+    <div class="kpis">
+      ${kpi("Visitas",     p.metricas.visitas.realizado,     p.metricas.visitas.meta,     v=>v.toLocaleString("pt-BR"))}
+      ${kpi("Pedidos",     p.metricas.pedidos.realizado,     p.metricas.pedidos.meta,     v=>v)}
+      ${kpi("Conversão",   p.metricas.conversao.realizado,   p.metricas.conversao.meta,   v=>Number(v).toFixed(2), "%")}
+      ${kpi("Ticket Médio",p.metricas.ticketMedio.realizado, p.metricas.ticketMedio.meta,  fmt)}
+    </div>
+
+    <div class="charts">
+      <div class="chart-card">
+        <p class="chart-label">Vendas vs Meta por Semana</p>
+        <div class="chart-wrap"><canvas id="chartVendas"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <p class="chart-label">Conversão por Semana (%)</p>
+        <div class="chart-wrap"><canvas id="chartConv"></canvas></div>
+      </div>
+    </div>
+
+    <div class="bottom-grid">
+      <div class="panel">
+        <p class="panel-label">Insights do período</p>
+        ${p.insights.map(ins => `
+          <div class="insight-item ${ins.tipo}">
+            <div class="insight-dot ${ins.tipo}"></div>
+            <p class="insight-txt">${ins.texto}</p>
+          </div>`).join("")}
+      </div>
+      <div class="panel">
+        <p class="panel-label">Plano de ação</p>
+        ${p.acoes.map((a,i) => `
+          <div class="acao-item">
+            <div class="acao-num">${i+1}</div>
+            <p class="acao-txt">${a}</p>
+          </div>`).join("")}
+      </div>
+    </div>
+  `;
+
+  document.getElementById("footer").textContent =
+    `Scheffer Consultoria de E-commerce · ${p.mesAno} · ${p.periodo}`;
+
+  renderGraficos(p);
+
+  // Fade
+  const c = document.getElementById("content");
+  c.classList.remove("fade-up");
+  void c.offsetWidth;
+  c.classList.add("fade-up");
+}
+
+function renderGraficos(p) {
+  // destroi anteriores
+  if (chartVendas) { chartVendas.destroy(); chartVendas = null; }
+  if (chartConv)   { chartConv.destroy();   chartConv   = null; }
+
+  const labels  = p.semanais.map(s => s.s);
+  const reais   = p.semanais.map(s => s.real);
+  const metas   = p.semanais.map(s => s.meta);
+  const convs   = p.semanais.map(s => s.conv);
+
+  const defaults = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: "rgba(255,255,255,0.4)", font: { size: 11, family:"DM Sans" }, boxWidth: 10 } } },
+    scales: {
+      x: { grid: { color:"rgba(255,255,255,0.04)" }, ticks: { color:"rgba(255,255,255,0.35)", font:{size:11} } },
+      y: { grid: { color:"rgba(255,255,255,0.04)" }, ticks: { color:"rgba(255,255,255,0.25)", font:{size:10} } },
+    }
+  };
+
+  chartVendas = new Chart(document.getElementById("chartVendas"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label:"Meta",      data: metas, backgroundColor:"rgba(255,255,255,0.07)", borderRadius:4 },
+        { label:"Realizado", data: reais, backgroundColor:"#3b82f6", borderRadius:4 },
+      ]
+    },
+    options: {
+      ...defaults,
+      scales: {
+        ...defaults.scales,
+        y: { ...defaults.scales.y, ticks: { ...defaults.scales.y.ticks, callback: v => "R$" + (v/1000).toFixed(0)+"k" } }
+      }
+    }
+  });
+
+  chartConv = new Chart(document.getElementById("chartConv"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Conversão %",
+        data: convs,
+        borderColor: "#a78bfa",
+        backgroundColor: "rgba(167,139,250,0.12)",
+        borderWidth: 2,
+        pointBackgroundColor: "#a78bfa",
+        pointRadius: 4,
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: {
+      ...defaults,
+      plugins: {
+        ...defaults.plugins,
+        annotation: {},
+      },
+      scales: {
+        ...defaults.scales,
+        y: { ...defaults.scales.y, ticks: { ...defaults.scales.y.ticks, callback: v => v+"%" } }
+      }
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+// NAVEGAÇÃO
+// ─────────────────────────────────────────────
+function irPara(i) {
+  if (i < 0 || i >= HISTORICO.length) return;
+  idxAtual = i;
+  renderSeletor();
+  renderConteudo();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// INIT
+renderSeletor();
+renderConteudo();
+</script>
+</body>
+</html>
